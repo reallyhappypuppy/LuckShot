@@ -20,15 +20,28 @@
 
 <hr>
 
-<h3>💬 Chat</h3>
+<!-- ✅ 채팅 좌우 분리 -->
+<div style="display:flex; gap:20px">
 
-<button onclick="mode='room'">Room</button>
-<button onclick="mode='global'">World</button>
+<!-- 🏠 ROOM CHAT -->
+<div style="width:50%">
+<h3>🏠 Room Chat</h3>
+<div id="roomChat"></div>
 
-<div id="chatBox"></div>
+<input id="roomMsg">
+<button onclick="sendRoom()">Send</button>
+</div>
 
-<input id="msg">
-<button onclick="send()">Send</button>
+<!-- 🌍 GLOBAL CHAT -->
+<div style="width:50%">
+<h3>🌍 Global Chat</h3>
+<div id="globalChat"></div>
+
+<input id="globalMsg">
+<button onclick="sendGlobal()">Send</button>
+</div>
+
+</div>
 
 </div>
 
@@ -49,6 +62,9 @@ socket.on("update", (roomData)=>{
     document.getElementById("bullets").innerText =
         `🔴 ${real} | ⚪ ${blank}`
 
+    // ✅ 핵심 수정: myTurn 정의
+    const myTurn = roomData.players[roomData.turn] === username
+
     document.getElementById("players").innerHTML =
         roomData.players.map(p=>{
             let isAlive = roomData.alive.includes(p)
@@ -58,7 +74,7 @@ socket.on("update", (roomData)=>{
             <div class="player ${isAlive ? 'alive':'dead'} ${isTurn?'turn':''}">
                 ${p} ${isAlive ? '🟢':'💀'}
                 ${
-                    roomData.state === "playing" && isAlive && isTurn
+                    roomData.state === "playing" && myTurn && isAlive
                     ? `<button onclick="shoot('${p}')">Shoot</button>`
                     : ''
                 }
@@ -79,31 +95,46 @@ function shoot(target){
     socket.emit("shoot", {room, shooter:username, target})
 }
 
-let mode = "room"
-
-function send(){
-    const msg = document.getElementById("msg").value
-
-    if(mode === "room"){
-        socket.emit("chat", {username, msg, room})
-    } else {
-        socket.emit("global_chat", {username, msg})
-    }
-
-    document.getElementById("msg").value = ""
+<!-- ✅ ROOM CHAT -->
+function sendRoom(){
+    const msg = document.getElementById("roomMsg").value
+    socket.emit("chat", {username, msg, room})
+    document.getElementById("roomMsg").value = ""
 }
 
-socket.on("global_chat", (d)=>{
-    if(mode === "global"){
-        const chat = document.getElementById("chatBox")
-        chat.innerHTML += `<div>[🌍] ${d.username}: ${d.msg}</div>`
-    }
+<!-- ✅ GLOBAL CHAT -->
+function sendGlobal(){
+    const msg = document.getElementById("globalMsg").value
+    socket.emit("global_chat", {username, msg})
+    document.getElementById("globalMsg").value = ""
+}
+
+<!-- ✅ 채팅 표시 -->
+socket.on("chat", (d)=>{
+    const chat = document.getElementById("roomChat")
+    chat.innerHTML += `<div>${d.username}: ${d.msg}</div>`
+    chat.scrollTop = chat.scrollHeight
 })
 
-socket.on("chat", (d)=>{
-    const chat = document.getElementById("chatBox")
+socket.on("global_chat", (d)=>{
+    const chat = document.getElementById("globalChat")
     chat.innerHTML += `<div>${d.username}: ${d.msg}</div>`
+    chat.scrollTop = chat.scrollHeight
 })
+
+<!-- ✅ 채팅 히스토리 (중요) -->
+socket.on("chat_history", (msgs)=>{
+    const chat = document.getElementById("roomChat")
+    chat.innerHTML = msgs.map(m=>`<div>${m.username}: ${m.msg}</div>`).join("")
+})
+
+socket.on("global_chat_history", (msgs)=>{
+    const chat = document.getElementById("globalChat")
+    chat.innerHTML = msgs.map(m=>`<div>${m.username}: ${m.msg}</div>`).join("")
+})
+
+<!-- ✅ 처음 들어올 때 채팅 불러오기 -->
+socket.emit("get_global_chat")
 
 socket.on("shot", (d)=>{
     alert(`${d.shooter} → ${d.target} (${d.bullet})`)
