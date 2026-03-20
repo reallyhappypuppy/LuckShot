@@ -15,9 +15,13 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 rooms = {}
+global_chat_log = []
 
 def generate_code():
     return ''.join(random.choices(string.ascii_uppercase, k=4))
+
+def broadcast_rooms():
+    socketio.emit("rooms_update", rooms)
 
 # =========================
 # 페이지
@@ -105,7 +109,7 @@ def create_room():
         "state": "waiting",
         "sids": {}
     }
-
+    broadcast_rooms()
     return redirect(f"/room/{code}")
 
 # =========================
@@ -117,7 +121,16 @@ def chat(data):
 
 @socketio.on("global_chat")
 def global_chat(data):
-    emit("global_chat", data, broadcast=True)
+    global_chat_log.append(data)
+    socketio.emit("global_chat", data)
+
+@socketio.on("get_global_chat")
+def get_global_chat():
+    emit("global_chat_history", global_chat_log)
+
+@socketio.on("get_rooms")
+def get_rooms():
+    emit("rooms_update", rooms)
 
 @socketio.on("join")
 def join(data):
@@ -134,10 +147,13 @@ def join(data):
         room["players"].append(user)
 
     emit("update", room, to=code)
+    broadcast_rooms()
 
 @socketio.on("disconnect")
 def disconnect():
-    for code, room in rooms.items():
+    for code in list(rooms.keys()):
+        room = rooms[code]
+
         if request.sid in room["sids"]:
             user = room["sids"].pop(request.sid)
 
@@ -149,7 +165,13 @@ def disconnect():
             if user == room["host"]:
                 room["host"] = room["players"][0] if room["players"] else None
 
+            # ✅ 방 비었으면 삭제
+            if len(room["players"]) == 0:
+                del rooms[code]
+
             emit("update", room, to=code)
+            broadcast_rooms()
+            break
 
 @socketio.on("start")
 def start(data):
@@ -204,6 +226,8 @@ def shoot(data):
         "bullet": bullet
     }, to=code)
 
+    emit("update", room, to=code)
+    
     if len(room["alive"]) == 1:
         winner = room["alive"][0]
 

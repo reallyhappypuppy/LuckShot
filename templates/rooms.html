@@ -12,12 +12,15 @@
 
 <hr>
 
+<!-- ✅ 서버 초기 렌더 + 소켓 업데이트 같이 사용 -->
+<div id="roomList">
 {% for code, room in rooms.items() %}
 <div class="player">
     {{ room.name }} ({{ room.players|length }})
     <a href="/room/{{ code }}"><button>Join</button></a>
 </div>
 {% endfor %}
+</div>
 
 <hr>
 
@@ -61,5 +64,29 @@ socket.on("global_chat", (d)=>{
     const chat = document.getElementById("globalChat")
     chat.innerHTML += `<div><b>${d.username}</b>: ${d.msg}</div>`
     chat.scrollTop = chat.scrollHeight
+})
+
+/* ✅ 방 목록 실시간 갱신 */
+socket.on("rooms_update", (rooms)=>{
+    const container = document.getElementById("roomList")
+
+    container.innerHTML = Object.entries(rooms).map(([code, room])=>{
+        return `
+        <div class="player">
+            ${room.name} (${room.players.length})
+            <a href="/room/${code}"><button>Join</button></a>
+        </div>`
+    }).join("")
+})
+
+/* ✅ 페이지 들어오자마자 현재 상태 요청 */
+socket.emit("get_rooms")
+
+/* ✅ 월드 채팅 히스토리 요청 */
+socket.emit("get_global_chat")
+
+socket.on("global_chat_history", (msgs)=>{
+    const chat = document.getElementById("globalChat")
+    chat.innerHTML = msgs.map(m=>`<div><b>${m.username}</b>: ${m.msg}</div>`).join("")
 })
 </script>
