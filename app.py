@@ -6,7 +6,7 @@ import random, string
 
 app = Flask(__name__)
 app.secret_key = "secret"
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 SUPABASE_URL = "https://ooszwbwvgyjzfotuisgn.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vc3p3Ynd2Z3lqemZvdHVpc2duIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3MjAxOTUsImV4cCI6MjA4OTI5NjE5NX0.1r6a-EV22YIpD0L1F98bNndWjreqPdgth098_GdcLC8"
@@ -67,6 +67,10 @@ def create_room():
 # =========================
 # Socket
 # =========================
+@socketio.on("chat")
+def chat(data):
+    emit("chat", data, to=data["room"])
+
 @socketio.on("join")
 def join(data):
     code = data["room"]
