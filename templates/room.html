@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="container">
+
+<h2>🎯 LuckShot - Room {{ code }}</h2>
+<p>Player: {{ username }}</p>
+
+<h3 id="status">Waiting...</h3>
+
+<div id="players"></div>
+
+<button onclick="start()">Start Game</button>
+
+<h3>💬 Chat</h3>
+
+<div id="chatBox"></div>
+
+<input id="msg">
+<button onclick="send()">Send</button>
+
+</div>
+
+<script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+
+<script>
+const socket = io()
+
+const username = "{{ username }}"
+const room = "{{ code }}"
+
+socket.emit("join", {room, username})
+
+socket.on("update", (roomData)=>{
+
+    document.getElementById("players").innerHTML =
+        roomData.players.map(p=>{
+            let isAlive = roomData.alive.includes(p)
+            let isTurn = roomData.players[roomData.turn] === p
+
+            return `
+            <div class="player ${isAlive ? 'alive':'dead'} ${isTurn?'turn':''}">
+                ${p} ${isAlive ? '🟢':'💀'}
+                ${isAlive ? `<button onclick="shoot('${p}')">Shoot</button>`:''}
+            </div>`
+        }).join("")
+
+    document.getElementById("status").innerText =
+        roomData.started
+        ? "🎯 Turn: " + roomData.players[roomData.turn]
+        : "Waiting for start..."
+})
+
+function send(){
+    const msg = document.getElementById("msg").value
+    socket.emit("chat", {username, msg, room})
+    document.getElementById("msg").value = ""
+}
+
+socket.on("chat", (d)=>{
+    const chat = document.getElementById("chatBox")
+    chat.innerHTML += `<div><b>${d.username}</b>: ${d.msg}</div>`
+    chat.scrollTop = chat.scrollHeight
+})
+
+function start(){
+    socket.emit("start", {room})
+}
+
+function shoot(target){
+    socket.emit("shoot", {room, shooter:username, target})
+}
+
+socket.on("shot", (d)=>{
+    alert(`${d.shooter} → ${d.target} (${d.bullet})`)
+})
+
+socket.on("game_over", (d)=>{
+    setTimeout(()=>{
+        alert("🏆 Winner: " + d.winner)
+    }, 500)
+})
+</script>
+
+</body>
+</html>

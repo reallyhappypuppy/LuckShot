@@ -1,0 +1,23 @@
+<link rel="stylesheet" href="/static/style.css">
+
+<div class="container">
+<h2>🏆 Ranking</h2>
+
+<table>
+<tr>
+<th>Rank</th>
+<th>Username</th>
+<th>Wins</th>
+</tr>
+
+{% for user in users %}
+<tr>
+<td>{{ loop.index }}</td>
+<td>{{ user.username }}</td>
+<td>{{ user.wins }}</td>
+</tr>
+{% endfor %}
+</table>
+
+<a href="/rooms"><button>Back</button></a>
+</div>

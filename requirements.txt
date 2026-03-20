@@ -1,0 +1,6 @@
+flask
+flask-socketio
+supabase
+werkzeug
+eventlet
+gunicorn
