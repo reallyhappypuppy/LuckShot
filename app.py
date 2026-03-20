@@ -24,54 +24,18 @@ def generate_code():
 def home():
     return render_template("home.html")
 
-@app.route("/register", methods=["GET","POST"])
-def register():
-    if request.method == "POST":
-        u = request.form["username"]
-        p = request.form["password"]
-
-        if supabase.table("users").select("*").eq("username", u).execute().data:
-            return "Username exists"
-
-        supabase.table("users").insert({
-            "username": u,
-            "password_hash": generate_password_hash(p),
-            "wins": 0
-        }).execute()
-
-        return redirect("/login")
-
-    return render_template("register.html")
-
-@app.route("/login", methods=["GET","POST"])
-def login():
-    if request.method == "POST":
-        u = request.form["username"]
-        p = request.form["password"]
-
-        res = supabase.table("users").select("*").eq("username", u).execute()
-
-        if not res.data:
-            return "No user"
-
-        if not check_password_hash(res.data[0]["password_hash"], p):
-            return "Wrong password"
-
-        session["username"] = u
-        return redirect("/rooms")
-
-    return render_template("login.html")
-
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect("/")
-
 @app.route("/rooms")
 def rooms_page():
     if "username" not in session:
         return redirect("/login")
-    return render_template("rooms.html", username=session["username"], rooms=rooms)
+
+    ranking = supabase.table("users") \
+        .select("*") \
+        .order("wins", desc=True) \
+        .limit(10) \
+        .execute().data
+
+    return render_template("rooms.html", username=session["username"], rooms=rooms, ranking=ranking)
 
 @app.route("/room/<code>")
 def room_page(code):
@@ -79,30 +43,23 @@ def room_page(code):
         return redirect("/login")
     return render_template("room.html", code=code, username=session["username"])
 
-@app.route("/ranking")
-def ranking():
-    result = supabase.table("users") \
-        .select("*") \
-        .order("wins", desc=True) \
-        .limit(10) \
-        .execute()
-
-    return render_template("ranking.html", users=result.data)
-
 # =========================
 # 방 생성
 # =========================
 @app.route("/create_room", methods=["POST"])
 def create_room():
     code = generate_code()
+    name = request.form.get("room_name", "NoName")
 
     rooms[code] = {
+        "name": name,
         "players": [],
         "alive": [],
         "bullets": [],
         "turn": 0,
         "host": session["username"],
-        "started": False
+        "state": "waiting",
+        "sids": {}
     }
 
     return redirect(f"/room/{code}")
@@ -117,19 +74,40 @@ def join(data):
 
     join_room(code)
 
-    if user not in rooms[code]["players"]:
-        rooms[code]["players"].append(user)
+    room = rooms[code]
 
-    emit("update", rooms[code], to=code)
+    room["sids"][request.sid] = user
 
-@socketio.on("chat")
-def chat(data):
-    emit("chat", data, to=data["room"])
+    if user not in room["players"]:
+        room["players"].append(user)
+
+    emit("update", room, to=code)
+
+@socketio.on("disconnect")
+def disconnect():
+    for code, room in rooms.items():
+        if request.sid in room["sids"]:
+            user = room["sids"].pop(request.sid)
+
+            if user in room["players"]:
+                room["players"].remove(user)
+            if user in room["alive"]:
+                room["alive"].remove(user)
+
+            if user == room["host"]:
+                room["host"] = room["players"][0] if room["players"] else None
+
+            emit("update", room, to=code)
 
 @socketio.on("start")
 def start(data):
     code = data["room"]
+    user = data["username"]
+
     room = rooms[code]
+
+    if user != room["host"]:
+        return
 
     if len(room["players"]) < 2:
         return
@@ -139,9 +117,9 @@ def start(data):
     random.shuffle(bullets)
 
     room["bullets"] = bullets
-    room["alive"] = room["players"].copy()
+    room["alive"] = room["players"][:]
     room["turn"] = 0
-    room["started"] = True
+    room["state"] = "playing"
 
     emit("update", room, to=code)
 
@@ -153,17 +131,14 @@ def shoot(data):
 
     room = rooms[code]
 
+    if room["state"] != "playing":
+        return
+
     current = room["players"][room["turn"]]
     if shooter != current:
         return
 
     bullet = room["bullets"].pop(0)
-
-    result = {
-        "shooter": shooter,
-        "target": target,
-        "bullet": bullet
-    }
 
     if bullet == "real" and target in room["alive"]:
         room["alive"].remove(target)
@@ -171,9 +146,12 @@ def shoot(data):
     if not (bullet == "blank" and shooter == target):
         room["turn"] = (room["turn"] + 1) % len(room["players"])
 
-    emit("shot", result, to=code)
+    emit("shot", {
+        "shooter": shooter,
+        "target": target,
+        "bullet": bullet
+    }, to=code)
 
-    # 승리
     if len(room["alive"]) == 1:
         winner = room["alive"][0]
 
@@ -182,9 +160,10 @@ def shoot(data):
 
         supabase.table("users").update({"wins": wins}).eq("username", winner).execute()
 
+        room["state"] = "ended"
+
         emit("game_over", {"winner": winner}, to=code)
+        emit("update", room, to=code)
 
-        room["started"] = False
-
-    if __name__ == "__main__":
-        socketio.run(app, host="0.0.0.0", port=10000)
+if __name__ == "__main__":
+    socketio.run(app, host="0.0.0.0", port=10000)

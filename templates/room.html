@@ -7,19 +7,20 @@
 
 <div class="container">
 
-<h2>🎯 LuckShot - Room {{ code }}</h2>
-<p>Player: {{ username }}</p>
+<h2>🎯 Room {{ code }}</h2>
+<p>{{ username }}</p>
 
-<h3 id="status">Waiting...</h3>
+<h3 id="status"></h3>
+<h3 id="bullets"></h3>
 
 <div id="players"></div>
 
-<button onclick="start()">Start Game</button>
+<button onclick="start()">Start</button>
+<a href="/rooms"><button>Leave</button></a>
 
-<h3>💬 Chat</h3>
+<hr>
 
 <div id="chatBox"></div>
-
 <input id="msg">
 <button onclick="send()">Send</button>
 
@@ -29,13 +30,18 @@
 
 <script>
 const socket = io()
-
 const username = "{{ username }}"
 const room = "{{ code }}"
 
 socket.emit("join", {room, username})
 
 socket.on("update", (roomData)=>{
+
+    const real = roomData.bullets.filter(b=>b==="real").length
+    const blank = roomData.bullets.filter(b=>b==="blank").length
+
+    document.getElementById("bullets").innerText =
+        `🔴 ${real} | ⚪ ${blank}`
 
     document.getElementById("players").innerHTML =
         roomData.players.map(p=>{
@@ -45,15 +51,27 @@ socket.on("update", (roomData)=>{
             return `
             <div class="player ${isAlive ? 'alive':'dead'} ${isTurn?'turn':''}">
                 ${p} ${isAlive ? '🟢':'💀'}
-                ${isAlive ? `<button onclick="shoot('${p}')">Shoot</button>`:''}
+                ${
+                    roomData.state === "playing" && isAlive && isTurn
+                    ? `<button onclick="shoot('${p}')">Shoot</button>`
+                    : ''
+                }
             </div>`
         }).join("")
 
     document.getElementById("status").innerText =
-        roomData.started
-        ? "🎯 Turn: " + roomData.players[roomData.turn]
-        : "Waiting for start..."
+        roomData.state === "waiting" ? "대기중"
+        : roomData.state === "playing" ? "턴: " + roomData.players[roomData.turn]
+        : "게임 종료"
 })
+
+function start(){
+    socket.emit("start", {room, username})
+}
+
+function shoot(target){
+    socket.emit("shoot", {room, shooter:username, target})
+}
 
 function send(){
     const msg = document.getElementById("msg").value
@@ -63,26 +81,15 @@ function send(){
 
 socket.on("chat", (d)=>{
     const chat = document.getElementById("chatBox")
-    chat.innerHTML += `<div><b>${d.username}</b>: ${d.msg}</div>`
-    chat.scrollTop = chat.scrollHeight
+    chat.innerHTML += `<div>${d.username}: ${d.msg}</div>`
 })
-
-function start(){
-    socket.emit("start", {room})
-}
-
-function shoot(target){
-    socket.emit("shoot", {room, shooter:username, target})
-}
 
 socket.on("shot", (d)=>{
     alert(`${d.shooter} → ${d.target} (${d.bullet})`)
 })
 
 socket.on("game_over", (d)=>{
-    setTimeout(()=>{
-        alert("🏆 Winner: " + d.winner)
-    }, 500)
+    alert("Winner: " + d.winner)
 })
 </script>
 

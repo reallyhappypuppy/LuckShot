@@ -1,22 +1,28 @@
 <link rel="stylesheet" href="/static/style.css">
 
 <div class="container">
-
 <h2>🏠 Rooms</h2>
-
 <p>Welcome, {{ username }}</p>
 
 <form method="POST" action="/create_room">
-    <button>Create Room</button>
+<input name="room_name" placeholder="Room Name">
+<button>Create Room</button>
 </form>
 
 <hr>
 
 {% for code, room in rooms.items() %}
 <div class="player">
-    Room {{ code }} ({{ room.players|length }})
-    <a href="/room/{{ code }}"><button>Join</button></a>
+Room {{ room.name }} ({{ room.players|length }})
+<a href="/room/{{ code }}"><button>Join</button></a>
 </div>
+{% endfor %}
+
+<hr>
+
+<h3>🏆 Ranking</h3>
+{% for u in ranking %}
+<div>{{ loop.index }}. {{ u.username }} ({{ u.wins }})</div>
 {% endfor %}
 
 </div>
