@@ -1,41 +1,71 @@
 body {
-    background: #1e1e2f;
-    color: white;
-    font-family: Arial;
+    background: linear-gradient(#2e1f12, #1a120a);
+    color: #f5e6c8;
+    font-family: 'Trebuchet MS', sans-serif;
     text-align: center;
 }
 
+/* 컨테이너 */
 .container {
     width: 90%;
-    max-width: 800px;
-    margin: auto;
-    background: #2a2a40;
-    padding: 20px;
+    max-width: 900px;
+    margin: 40px auto;
+    background: #3b2a1a;
+    padding: 25px;
     border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.7);
+    border: 2px solid #6b4f2a;
 }
 
+/* 제목 */
+h1, h2, h3 {
+    color: #ffd27f;
+}
+
+/* 플레이어 카드 */
 .player {
-    background: #2c2c3e;
+    background: #4a3420;
     margin: 8px;
     padding: 10px;
     border-radius: 10px;
 }
 
-.alive { border-left: 5px solid #4CAF50; }
-.dead { border-left: 5px solid #f44336; opacity: 0.6; }
-.turn { background: #3f3f6a; }
+.alive { border-left: 5px solid #6aff6a; }
+.dead { border-left: 5px solid #ff5c5c; opacity: 0.6; }
+.turn { background: #5a4028; }
 
+/* 버튼 */
 button {
     padding: 8px 12px;
     border-radius: 6px;
-    background: #4CAF50;
+    border: none;
+    background: #8b5a2b;
     color: white;
     cursor: pointer;
+    transition: 0.2s;
 }
 
-#chatBox {
-    height: 150px;
+button:hover {
+    background: #a06b35;
+    transform: scale(1.05);
+}
+
+/* 입력 */
+input {
+    padding: 8px;
+    border-radius: 5px;
+    border: none;
+    background: #2b1c10;
+    color: white;
+}
+
+/* 채팅 */
+#chatBox, #globalChat {
+    height: 200px;
     overflow-y: scroll;
-    background: #111;
+    background: #1a120a;
     padding: 10px;
+    border-radius: 10px;
+    text-align: left;
+    margin-bottom: 10px;
 }

@@ -20,7 +20,13 @@
 
 <hr>
 
+<h3>💬 Chat</h3>
+
+<button onclick="mode='room'">Room</button>
+<button onclick="mode='global'">World</button>
+
 <div id="chatBox"></div>
+
 <input id="msg">
 <button onclick="send()">Send</button>
 
@@ -73,11 +79,26 @@ function shoot(target){
     socket.emit("shoot", {room, shooter:username, target})
 }
 
+let mode = "room"
+
 function send(){
     const msg = document.getElementById("msg").value
-    socket.emit("chat", {username, msg, room})
+
+    if(mode === "room"){
+        socket.emit("chat", {username, msg, room})
+    } else {
+        socket.emit("global_chat", {username, msg})
+    }
+
     document.getElementById("msg").value = ""
 }
+
+socket.on("global_chat", (d)=>{
+    if(mode === "global"){
+        const chat = document.getElementById("chatBox")
+        chat.innerHTML += `<div>[🌍] ${d.username}: ${d.msg}</div>`
+    }
+})
 
 socket.on("chat", (d)=>{
     const chat = document.getElementById("chatBox")

@@ -1,38 +1,65 @@
-<!DOCTYPE html>
-<html>
-<head>
-<link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-
 <link rel="stylesheet" href="/static/style.css">
 
 <div class="container">
+
 <h2>🏠 Rooms</h2>
 <p>Welcome, {{ username }}</p>
 
 <form method="POST" action="/create_room">
-<input name="room_name" placeholder="Room Name">
-<button>Create Room</button>
+    <input name="room_name" placeholder="Room Name">
+    <button>Create Room</button>
 </form>
 
 <hr>
 
 {% for code, room in rooms.items() %}
 <div class="player">
-Room {{ room.name }} ({{ room.players|length }})
-<a href="/room/{{ code }}"><button>Join</button></a>
+    {{ room.name }} ({{ room.players|length }})
+    <a href="/room/{{ code }}"><button>Join</button></a>
 </div>
 {% endfor %}
 
 <hr>
 
+<div style="display:flex; gap:20px">
+
+<!-- 🌍 월드 채팅 -->
+<div style="width:50%">
+<h3>🌍 World Chat</h3>
+
+<div id="globalChat"></div>
+
+<input id="gmsg">
+<button onclick="sendGlobal()">Send</button>
+</div>
+
+<!-- 🏆 랭킹 -->
+<div style="width:50%">
 <h3>🏆 Ranking</h3>
 {% for u in ranking %}
 <div>{{ loop.index }}. {{ u.username }} ({{ u.wins }})</div>
 {% endfor %}
+</div>
 
 </div>
 
-</body>
-</html>
+</div>
+
+<script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+
+<script>
+const socket = io()
+const username = "{{ username }}"
+
+function sendGlobal(){
+    const msg = document.getElementById("gmsg").value
+    socket.emit("global_chat", {username, msg})
+    document.getElementById("gmsg").value = ""
+}
+
+socket.on("global_chat", (d)=>{
+    const chat = document.getElementById("globalChat")
+    chat.innerHTML += `<div><b>${d.username}</b>: ${d.msg}</div>`
+    chat.scrollTop = chat.scrollHeight
+})
+</script>

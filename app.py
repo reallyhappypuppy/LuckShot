@@ -24,6 +24,48 @@ def generate_code():
 def home():
     return render_template("home.html")
 
+# =========================
+# 로그인 / 회원가입
+# =========================
+@app.route("/register", methods=["GET","POST"])
+def register():
+    if request.method == "POST":
+        u = request.form["username"]
+        p = request.form["password"]
+
+        if supabase.table("users").select("*").eq("username", u).execute().data:
+            return "Username exists"
+
+        supabase.table("users").insert({
+            "username": u,
+            "password_hash": generate_password_hash(p),
+            "wins": 0
+        }).execute()
+
+        return redirect("/login")
+
+    return render_template("register.html")
+
+
+@app.route("/login", methods=["GET","POST"])
+def login():
+    if request.method == "POST":
+        u = request.form["username"]
+        p = request.form["password"]
+
+        res = supabase.table("users").select("*").eq("username", u).execute()
+
+        if not res.data:
+            return "No user"
+
+        if not check_password_hash(res.data[0]["password_hash"], p):
+            return "Wrong password"
+
+        session["username"] = u
+        return redirect("/rooms")
+
+    return render_template("login.html")
+
 @app.route("/rooms")
 def rooms_page():
     if "username" not in session:
@@ -70,6 +112,10 @@ def create_room():
 @socketio.on("chat")
 def chat(data):
     emit("chat", data, to=data["room"])
+
+@socketio.on("global_chat")
+def global_chat(data):
+    emit("global_chat", data, broadcast=True)
 
 @socketio.on("join")
 def join(data):
