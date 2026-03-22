@@ -122,7 +122,7 @@ def chat(data):
 @socketio.on("global_chat")
 def global_chat(data):
     global_chat_log.append(data)
-    socketio.emit("global_chat", data, broadcast=True)
+    socketio.emit("global_chat", data)
 
 @socketio.on("get_global_chat")
 def get_global_chat():
@@ -130,7 +130,7 @@ def get_global_chat():
 
 @socketio.on("get_rooms")
 def get_rooms():
-    emit("rooms_update", rooms, broadcast=True)
+    emit("rooms_update", rooms)
 
 @socketio.on("join")
 def join(data):

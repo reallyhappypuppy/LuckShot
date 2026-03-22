@@ -109,18 +109,6 @@ function sendGlobal(){
     document.getElementById("globalMsg").value = ""
 }
 
-// 🔹 방 목록에서 접속자 수 표시
-socket.on("rooms_update", (rooms)=>{
-    const container = document.getElementById("roomList")
-    container.innerHTML = Object.entries(rooms).map(([code, room])=>{
-        return `
-        <div class="player">
-            ${room.name} (${room.players.length} players)
-            <a href="/room/${code}"><button>Join</button></a>
-        </div>`
-    }).join("")
-})
-
 //<!-- ✅ 채팅 표시 -->
 socket.on("chat", (d)=>{
     const chat = document.getElementById("roomChat")
@@ -130,7 +118,7 @@ socket.on("chat", (d)=>{
 
 socket.on("global_chat", (d)=>{
     const chat = document.getElementById("globalChat")
-    chat.innerHTML += `<div><b>${d.username}</b>: ${d.msg}</div>`
+    chat.innerHTML += `<div>${d.username}: ${d.msg}</div>`
     chat.scrollTop = chat.scrollHeight
 })
 
