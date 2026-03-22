@@ -211,17 +211,16 @@ def shoot(data):
         return
 
     alive_players = room["alive"]
+
+    # ✅ 현재 턴
     current = alive_players[room["turn_index"] % len(alive_players)]
     if shooter != current:
         return
-    
+
     bullet = room["bullets"].pop(0)
 
     if bullet == "real" and target in room["alive"]:
         room["alive"].remove(target)
-
-    if not (bullet == "blank" and shooter == target):
-        room["turn"] = (room["turn"] + 1) % len(room["players"])
 
     emit("shot", {
         "shooter": shooter,
@@ -229,14 +228,17 @@ def shoot(data):
         "bullet": bullet
     }, to=code)
 
-    emit("update", room, to=code)
-    
-# 🔹 다음 턴 계산
+    # ✅ 다음 턴 (여기만 사용)
     if len(room["alive"]) > 1:
-        room["turn_index"] = (room["turn_index"] + 1) % len(room["alive"])
+        room["turn_index"] = room["turn_index"] % len(room["alive"])
 
-    emit("shot", {"shooter": shooter, "target": target, "bullet": bullet}, to=code)
+        if not (bullet == "blank" and shooter == target):
+            room["turn_index"] = (room["turn_index"] + 1) % len(room["alive"])
 
+    # ✅ 상태 동기화 (마지막에 1번만)
+    emit("update", room, to=code)
+
+    # 승리 체크
     if len(room["alive"]) == 1:
         winner = room["alive"][0]
 
@@ -249,6 +251,6 @@ def shoot(data):
 
         emit("game_over", {"winner": winner}, to=code)
         emit("update", room, to=code)
-
+        
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=10000)
