@@ -122,7 +122,7 @@ def chat(data):
 @socketio.on("global_chat")
 def global_chat(data):
     global_chat_log.append(data)
-    socketio.emit("global_chat", data)
+    socketio.emit("global_chat", data, broadcast=True)
 
 @socketio.on("get_global_chat")
 def get_global_chat():
@@ -130,7 +130,7 @@ def get_global_chat():
 
 @socketio.on("get_rooms")
 def get_rooms():
-    emit("rooms_update", rooms)
+    emit("rooms_update", rooms, broadcast=True)
 
 @socketio.on("join")
 def join(data):
@@ -186,13 +186,15 @@ def start(data):
     if len(room["players"]) < 2:
         return
 
+    random.shuffle(room["players"])
+
     n = len(room["players"])
     bullets = ["real"]*n + ["blank"]*n
     random.shuffle(bullets)
 
     room["bullets"] = bullets
     room["alive"] = room["players"][:]
-    room["turn"] = 0
+    room["turn_index"] = 0
     room["state"] = "playing"
 
     emit("update", room, to=code)
@@ -208,10 +210,11 @@ def shoot(data):
     if room["state"] != "playing":
         return
 
-    current = room["players"][room["turn"]]
+    alive_players = room["alive"]
+    current = alive_players[room["turn_index"] % len(alive_players)]
     if shooter != current:
         return
-
+    
     bullet = room["bullets"].pop(0)
 
     if bullet == "real" and target in room["alive"]:
@@ -228,6 +231,12 @@ def shoot(data):
 
     emit("update", room, to=code)
     
+# 🔹 다음 턴 계산
+    if len(room["alive"]) > 1:
+        room["turn_index"] = (room["turn_index"] + 1) % len(room["alive"])
+
+    emit("shot", {"shooter": shooter, "target": target, "bullet": bullet}, to=code)
+
     if len(room["alive"]) == 1:
         winner = room["alive"][0]
 

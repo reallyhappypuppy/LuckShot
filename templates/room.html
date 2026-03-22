@@ -63,7 +63,7 @@ socket.on("update", (roomData)=>{
         `🔴 ${real} | ⚪ ${blank}`
 
     // ✅ 핵심 수정: myTurn 정의
-    const myTurn = roomData.players[roomData.turn] === username
+    const myTurn = roomData.players[roomData.turn_index % roomData.alive.length] === username
 
     document.getElementById("players").innerHTML =
         roomData.players.map(p=>{
@@ -95,21 +95,33 @@ function shoot(target){
     socket.emit("shoot", {room, shooter:username, target})
 }
 
-<!-- ✅ ROOM CHAT -->
+//<!-- ✅ ROOM CHAT -->
 function sendRoom(){
     const msg = document.getElementById("roomMsg").value
     socket.emit("chat", {username, msg, room})
     document.getElementById("roomMsg").value = ""
 }
 
-<!-- ✅ GLOBAL CHAT -->
+//<!-- ✅ GLOBAL CHAT -->
 function sendGlobal(){
     const msg = document.getElementById("globalMsg").value
     socket.emit("global_chat", {username, msg})
     document.getElementById("globalMsg").value = ""
 }
 
-<!-- ✅ 채팅 표시 -->
+// 🔹 방 목록에서 접속자 수 표시
+socket.on("rooms_update", (rooms)=>{
+    const container = document.getElementById("roomList")
+    container.innerHTML = Object.entries(rooms).map(([code, room])=>{
+        return `
+        <div class="player">
+            ${room.name} (${room.players.length} players)
+            <a href="/room/${code}"><button>Join</button></a>
+        </div>`
+    }).join("")
+})
+
+//<!-- ✅ 채팅 표시 -->
 socket.on("chat", (d)=>{
     const chat = document.getElementById("roomChat")
     chat.innerHTML += `<div>${d.username}: ${d.msg}</div>`
@@ -118,11 +130,11 @@ socket.on("chat", (d)=>{
 
 socket.on("global_chat", (d)=>{
     const chat = document.getElementById("globalChat")
-    chat.innerHTML += `<div>${d.username}: ${d.msg}</div>`
+    chat.innerHTML += `<div><b>${d.username}</b>: ${d.msg}</div>`
     chat.scrollTop = chat.scrollHeight
 })
 
-<!-- ✅ 채팅 히스토리 (중요) -->
+//<!-- ✅ 채팅 히스토리 (중요) -->
 socket.on("chat_history", (msgs)=>{
     const chat = document.getElementById("roomChat")
     chat.innerHTML = msgs.map(m=>`<div>${m.username}: ${m.msg}</div>`).join("")
@@ -133,7 +145,7 @@ socket.on("global_chat_history", (msgs)=>{
     chat.innerHTML = msgs.map(m=>`<div>${m.username}: ${m.msg}</div>`).join("")
 })
 
-<!-- ✅ 처음 들어올 때 채팅 불러오기 -->
+//<!-- ✅ 처음 들어올 때 채팅 불러오기 -->
 socket.emit("get_global_chat")
 
 socket.on("shot", (d)=>{
